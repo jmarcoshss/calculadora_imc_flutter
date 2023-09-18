@@ -42,6 +42,7 @@ class CardComponent extends StatelessWidget {
               ),
               const TextPadding(texto: 'IMC:'),
               Text(imcCard.toStringAsFixed(2)),
+              
             ],
           ),
         ),

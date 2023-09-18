@@ -36,6 +36,7 @@ class _HomepageState extends State<Homepage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          
           nameController.text = '';
           weightController.text = '';
           heightController.text = '';
