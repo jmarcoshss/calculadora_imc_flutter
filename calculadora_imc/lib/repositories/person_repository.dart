@@ -11,4 +11,7 @@ class PersonRepository {
   List<Person> personsList(){
     return _persons;
   } 
+  void remove (int id){
+    _persons.remove(_persons.where((person) => person.id == id).first);
+  }
 }

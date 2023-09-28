@@ -1,8 +1,10 @@
 import 'package:calculadora_imc/components/card_component.dart';
 import 'package:calculadora_imc/model/person.dart';
 import 'package:calculadora_imc/repositories/person_repository.dart';
+import 'package:calculadora_imc/repositories/person_repository_sqflite.dart';
 import 'package:calculadora_imc/widgets/text_padding.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -19,13 +21,26 @@ class _HomepageState extends State<Homepage> {
   var heightController = TextEditingController();
 
   var personRepository = PersonRepository();
+  PersonRepositorySqflite personRepositorySqflite = PersonRepositorySqflite();
 
   var _persons = <Person>[];
+  late SharedPreferences storage;
+  final CHAVE_NOME = "chave_nome";
+  final CHAVE_ALTURA = "chave_altura";
 
   @override
   void initState() {
     super.initState();
-    _persons = personRepository.personsList();
+    
+    carregarDados();
+  }
+
+  void carregarDados() async {
+    _persons = await personRepositorySqflite.getPersoDatabase();
+    storage = await SharedPreferences.getInstance();
+    nameController.text = storage.getString(CHAVE_NOME) ?? "";
+    heightController.text = storage.getString(CHAVE_ALTURA) ?? "";
+    setState(() {});
   }
 
   @override
@@ -36,10 +51,9 @@ class _HomepageState extends State<Homepage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          
-          nameController.text = '';
-          weightController.text = '';
-          heightController.text = '';
+          // nameController.text = '';
+           weightController.text = '';
+          // heightController.text = '';
           showDialog(
               context: context,
               builder: (BuildContext bc) {
@@ -65,27 +79,37 @@ class _HomepageState extends State<Homepage> {
                             keyboardType: TextInputType.number,
                           ),
                           ElevatedButton(
-                              onPressed: () {
+                              onPressed: () async {
                                 try {
+                                  await storage.setString(
+                                      CHAVE_NOME, nameController.text);
+                                  await storage.setString(
+                                      CHAVE_ALTURA, heightController.text);
                                   double result = (double.parse(
                                           weightController.text) /
                                       (double.parse(heightController.text) *
                                           double.parse(heightController.text)));
-                                  if (nameController.text == ''){
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      duration: Duration(seconds: 3),
-                                      content: Text(
-                                          'Por favor digite seu nome'),
-                                    ),
-                                  );
-                                  }else {
-                                    personRepository.addPerson(Person(
-                                      nameController.text,
-                                      double.parse(weightController.text),
-                                      double.parse(heightController.text),
-                                      result));
+                                  if (nameController.text == '') {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        duration: Duration(seconds: 3),
+                                        content:
+                                            Text('Por favor digite seu nome'),
+                                      ),
+                                    );
+                                    
+                                  } else {
+                                    await personRepositorySqflite.save(
+                                      Person(
+                                          0,
+                                          nameController.text,
+                                          double.parse(weightController.text),
+                                          double.parse(heightController.text),
+                                          result),
+                                    );
+                                     carregarDados();
                                   }
+                                  
                                 } catch (e) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -95,6 +119,7 @@ class _HomepageState extends State<Homepage> {
                                     ),
                                   );
                                 }
+                               
 
                                 Navigator.pop(context);
                                 setState(() {});
@@ -121,11 +146,21 @@ class _HomepageState extends State<Homepage> {
           itemCount: _persons.length,
           itemBuilder: (BuildContext bc, int index) {
             var person = _persons[index];
-            return CardComponent(
-              nameCard: person.name,
-              weightCard: person.weight,
-              heightCard: person.height,
-              imcCard: person.imc,
+            return Dismissible(
+              onDismissed: (DismissDirection dismissDirection) async {
+                
+                setState(() {
+                  personRepositorySqflite.remove(person.id);
+                  carregarDados();
+                  });
+              },
+              key: UniqueKey(),
+              child: CardComponent(
+                nameCard: person.name,
+                weightCard: person.weight,
+                heightCard: person.height,
+                imcCard: person.imc,
+              ),
             );
           },
         ),
